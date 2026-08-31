@@ -7,8 +7,8 @@
   "artifact": {
     "macos_dmg": {
       "path": "dist/TesseraStudio.dmg",
-      "bytes": 19596305,
-      "sha256": "ade955e9bf4f5e0f4f4f87b0ff68d7802b1dfb62960a37a8fb812c96806b027c",
+      "bytes": 19598915,
+      "sha256": "6cc7ad657115d4824ab4745473bf91f272662b674869d3393d0de6d44f392dbd",
       "signing": "ad-hoc (local); not notarised"
     },
     "kernel_dylib": {
@@ -27,7 +27,9 @@
     "rust_tests": "cargo test -p tessera_core (golden vector, fingerprint, cross-implementation)",
     "python_tests": "tests/test_sheet.py (16), tests/test_timing.py (15)",
     "flutter": "flutter analyze \u2014 clean; flutter test \u2014 4",
-    "equivalence": "Rust and Python sheets are raw-scanline identical from the same frames"
+    "equivalence": "Rust and Python sheets are raw-scanline identical from the same frames",
+    "dmg_mounted_and_launched": true,
+    "sheet_sidecar": "every sheet is written with a com.astral.tessera.sheet/1 JSON beside it"
   },
   "requirements": {
     "blender": ">=4.2 on PATH",
