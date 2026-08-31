@@ -1,0 +1,28 @@
+# Release pre-mortem
+
+Scenario: 0.1.0 failed in production. Each incident is written in past tense so the
+release gate can test its cause before shipment rather than after.
+
+Every row below except the last four is a failure that **actually happened during
+development**. They are recorded here because each one produced a plausible result
+and no error, which is the only class of defect that reliably survives to a user.
+
+| Incident | Earliest signal | Hardening applied | Release gate |
+|---|---|---|---|
+| A rigged character shipped as twelve copies of its bind pose. | The clip picker offered one animation where the file had eleven. | `animation_data.action` is no longer the only source: NLA strips and `bpy.data.actions` are enumerated and deduplicated. | `--clips-json` on an NLA-only asset reports every action; the batch audit compares clips found against `len(bpy.data.actions)`. |
+| A twelve-animation character produced one sheet. | Eleven clips reported as single-frame "poses". | Ranges are measured from `layers[].strips[].channelbags[].fcurves[].keyframe_points`, never from `Action.frame_range`, which lies about slotted actions. | Audit fails when a file's action count exceeds its recognised clip count. |
+| An applied clip evaluated to nothing at all. | Zero motion, no error, rig appeared broken. | `apply_clip` mutes NLA tracks and sets `action_slot` alongside `action`, which Blender 4.4+ requires. | Rendered frames are asserted distinct; identical frames across a motion clip fail QA. |
+| A sheet contained duplicate frames and timing matching no animation. | Samples ran past the end of the action. | Timing reads the action's own range; looping drops the endpoint. | `test_the_original_defect_cannot_recur` asserts no sample exceeds the action range. |
+| The frame writer crashed mid-file, leaving a 16-byte header. | An action started at frame −1. | Frame numbers are signed in both the Python writer and the Rust reader. | Cross-implementation test builds a sheet from the negative-range capture. |
+| Every sprite came out squashed by 1.43×. | Read as a modelling error, not a settings error. | The sprite preset derives `cell_aspect` from `cell_width/cell_height`; 0.5 is a terminal value. | `test_stock_cell_aspect_would_squash_it` re-introduces the bug and asserts it is detectable. |
+| A red character rendered as scattered dots. | Solid opaque regions never chose a solid tile. | `fill_mode=solid` runs the kernel twice: silhouette for coverage, alpha-masked colour for colour. | Solid-tile share is measured; tone mode remains available and distinct. |
+| Renders came back washed out and desaturated. | Colour did not match the model's own materials. | `view_transform` is forced to Standard; AgX is a filmic tonemap that drains saturation by design. | No lighting preset may leave a filmic transform on; asserted across all presets. |
+| Blender hung for tens of minutes on one asset and never errored. | Warnings about a cache file on `D:/Pictures/...`. | Modifiers whose external files are missing are disabled and named before rendering. | Every launch is time-boxed with `timeout --kill-after`; a stuck asset costs one asset. |
+| Seven render processes became unkillable and held the GPU until reboot. | Processes in D state inside `amdgpu_info_ioctl`. | All Blender launches are serialised behind a lock; one contended failure retries once before being called a defect. | Batch tools take the lock; the app queues behind it. |
+| The library listed thousands of assets that failed on click. | 52% of index rows named files not on disk. | Index rows are reconciled against the filesystem; a missing asset is recorded and skipped, never counted as a render failure. | Batch receipts distinguish `missing` from `failed`. |
+| Sheets shipped that no engine could slice. | No cell size, no anchors, no per-frame boxes. | Every sheet is written with a `com.astral.tessera.sheet/1` sidecar, and the sidecar travels with the sheet on copy. | Release gate asserts a `.json` beside every `.png`. |
+| A batch reported success while producing wrong output. | The audit compared two numbers from the same broken reader. | Checks compare against something the reader did not produce — the file's own action count. | A guard that cannot fail is treated as absent. |
+| **Untested:** a customer's Blender is older than 4.2 and the slotted-action API differs. | Clip listing returns nothing on their machine. | Version is not currently asserted at capture time. | **Open.** Add a version check that fails loudly rather than reporting an empty clip list. |
+| **Untested:** notarisation is absent, so Gatekeeper blocks first launch. | Customer reports the app "is damaged". | Documented in the READ ME and the store copy. | **Open.** Requires Apple Developer credentials to close. |
+| **Untested:** a library on a network volume disappears mid-batch. | Fetch failures partway through a long run. | Receipts record the fetch stage separately. | **Open.** No test injects a mid-run volume loss. |
+| **Untested:** two Tessera instances run at once on one machine. | Both drive Blender; the lock is advisory. | The lock serialises within its own scope. | **Open.** Nothing prevents a second app instance from starting. |

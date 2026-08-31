@@ -251,8 +251,15 @@ def push(local_png: Path, rel_dir: str) -> tuple[bool, str]:
                 return False, f"mkdir failed: {made.stderr.strip()[:120]}"
             time.sleep(2)
             continue
+        # The sidecar travels with the sheet. A PNG without its cell geometry and
+        # anchors cannot be sliced by an engine, so shipping one without the other
+        # is shipping half the deliverable — and the far side had 185 of them.
+        payload = [str(local_png)]
+        sidecar = local_png.with_suffix(".json")
+        if sidecar.is_file():
+            payload.append(str(sidecar))
         copy = subprocess.run(
-            ["scp", "-q", str(local_png), f"{HOST}:{SHEETS}/{rel_dir}/"],
+            ["scp", "-q", *payload, f"{HOST}:{SHEETS}/{rel_dir}/"],
             capture_output=True, text=True,
             env={**__import__("os").environ, "SSH_AUTH_SOCK": ""})
         if copy.returncode == 0:
@@ -381,6 +388,9 @@ def main() -> int:
                 label = safe_name(clips[0]["name"]) if clips else "still"
                 named = first.with_name(f"{label}.png")
                 first.replace(named)
+                first_side = first.with_suffix(".json")
+                if first_side.is_file():
+                    first_side.replace(named.with_suffix(".json"))
                 asset_ok, push_error = push(named, str(stem))
                 if not asset_ok:
                     outcome["push_error"] = push_error
