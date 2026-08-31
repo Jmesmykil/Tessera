@@ -1,0 +1,9 @@
+{
+  "name": "Astral.Tessera.PlayTests",
+  "rootNamespace": "Astral.Tessera.PlayTests",
+  "references": ["Astral.Slime.Runtime", "Astral.Slime.Editor", "Astral.Tessera.Runtime"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "includePlatforms": [],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"]
+}

@@ -1,0 +1,7 @@
+{
+  "name": "Astral.Tessera.Editor",
+  "rootNamespace": "Astral.Tessera.Editor",
+  "references": ["Astral.Tessera.Runtime"],
+  "includePlatforms": ["Editor"],
+  "autoReferenced": true
+}

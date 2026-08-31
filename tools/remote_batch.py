@@ -375,12 +375,16 @@ def main() -> int:
             clips, actions_in_file, total_clips = [], None, None
             if clips_json.exists():
                 try:
-                    payload = json.loads(clips_json.read_text())
+                    # A clip list that cannot be read is not the same as an asset
+                    # with no clips, and conflating them blames the file.
+                    payload = json.loads(clips_json.read_text(
+                        encoding="utf-8", errors="replace"))
                     total_clips = len(payload["clips"])
                     clips = [c for c in payload["clips"] if not c["pose"]]
                     actions_in_file = payload.get("actions_in_file")
-                except Exception:
+                except Exception as error:
                     clips = []
+                    print(f"    clip list unreadable: {error}"[:110], flush=True)
 
             asset_ok = False
             produced, asset_receipts = [], []

@@ -219,6 +219,21 @@ def action_frame_range(action, strip=None):
     return float(span[0]), float(span[1])
 
 
+def clean_name(text: str) -> str:
+    """A clip name that survives being written and read back.
+
+    Asset authors put anything in an action name, including bytes that are not
+    valid UTF-8. One of them corrupted the batch log and, worse, made the clip
+    list unreadable on the way back — so an asset with twenty-five animations
+    produced one sheet and the audit reported "no motion clip found", which is a
+    false accusation against a perfectly good file.
+
+    Names are therefore normalised at the source, where the damage starts, rather
+    than defended against at every reader.
+    """
+    return text.encode("utf-8", "replace").decode("utf-8", "replace")
+
+
 def list_clips(scene):
     """Every animation in the file, however the author stored it.
 
@@ -249,7 +264,8 @@ def list_clips(scene):
     for action in bpy.data.actions:
         lo, hi = action_frame_range(action)
         clips.setdefault(action.name, (lo, hi, "library", None))
-    out = [{"name": name, "start": lo, "end": hi, "source": src, "object": owner,
+    out = [{"name": clean_name(name), "start": lo, "end": hi, "source": src,
+            "object": clean_name(owner) if owner else owner,
             "frames": int(round(hi - lo)) + 1, "pose": (hi - lo) < 1.0}
            for name, (lo, hi, src, owner) in clips.items()]
     out.sort(key=lambda c: (c["pose"], -c["frames"], c["name"]))

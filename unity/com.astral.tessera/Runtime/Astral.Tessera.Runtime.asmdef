@@ -1,0 +1,8 @@
+{
+  "name": "Astral.Tessera.Runtime",
+  "rootNamespace": "Astral.Tessera",
+  "references": [],
+  "includePlatforms": [],
+  "allowUnsafeCode": false,
+  "autoReferenced": true
+}
