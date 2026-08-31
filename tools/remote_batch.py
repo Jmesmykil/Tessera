@@ -226,7 +226,7 @@ def render(blend: Path, clip: str | None, out_png: Path, size: int, yaws: int,
          "--tileset", str(ROOT / "assets/tilesets/pixel-hd.kernel.json"),
          "--columns", str(columns), "--anchor", "feet"],
         capture_output=True, text=True)
-    tsf.unlink(missing_ok=True)
+    tsf.unlink(missing_ok=True)      # the frame file is an intermediate, never kept
     note = ""
     for line in proc.stdout.splitlines():
         if line.startswith(("clip", "timing", "deps")):
@@ -323,6 +323,31 @@ def audit(row, clips, sheets, receipts_for_asset, actions_in_file=None,
     return gaps
 
 
+MIN_FREE_GB = 4.0
+
+
+def check_disk():
+    """Refuse to start without room, and say what is holding it.
+
+    A capture at 512px with 8 yaws and 8 frames is a 150 MB frame file, and a
+    handful of those filled a 228 GB disk down to 131 MB — at which point macOS
+    could not grow swap, Unity failed mid-write with "Disk full", and even a shell
+    command could not write its own output. The frame files are intermediates and
+    should never have survived their sheets.
+    """
+    import shutil
+    free = shutil.disk_usage("/").free / 2 ** 30
+    if free < MIN_FREE_GB:
+        leftovers = sorted(Path.home().glob("Tessera/out/**/*.tsf"))
+        held = sum(f.stat().st_size for f in leftovers) / 2 ** 30
+        raise SystemExit(
+            f"only {free:.1f} GB free (need {MIN_FREE_GB}). "
+            + (f"{len(leftovers)} leftover frame file(s) are holding {held:.1f} GB — "
+               "delete them; they are intermediates."
+               if leftovers else "free space before running."))
+    print(f"disk ok — {free:.1f} GB free")
+
+
 def prove_the_inspector_works():
     """Run the QA inspector against a sheet whose verdict is known IN ADVANCE.
 
@@ -404,6 +429,7 @@ def single_instance():
 
 def main() -> int:
     _lock = single_instance()
+    check_disk()
     prove_the_inspector_works()
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=5)

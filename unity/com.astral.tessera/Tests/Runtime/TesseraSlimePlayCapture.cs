@@ -291,13 +291,14 @@ namespace Astral.Tessera.PlayTests
         static void MakeCutout(Camera camera)
         {
             camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = new Color(0f, 0f, 0f, 0f);
+            camera.backgroundColor = new Color(0f, 0f, 0f, 0f);   // the cut-out, in one pass
             camera.allowHDR = false;
             camera.allowMSAA = false;
             var data = camera.GetComponent("UniversalAdditionalCameraData");
             if (data != null)
             {
                 var type = data.GetType();
+                // Measured: with this off, a zero-alpha clear yields a real cut-out.
                 type.GetProperty("renderPostProcessing")?.SetValue(data, false);
                 type.GetProperty("antialiasing")?.SetValue(data, 0);
                 type.GetProperty("renderShadows")?.SetValue(data, true);
@@ -351,6 +352,15 @@ namespace Astral.Tessera.PlayTests
             camera.transform.LookAt(centre);
         }
 
+        /// <summary>One render, with the camera configured to produce a cut-out.
+        ///
+        /// This wanted a two-pass black/white composite for a while, on the strength
+        /// of a sheet that came back fully opaque. Measured properly, the camera
+        /// settings were already enough: with URP post-processing off and a
+        /// zero-alpha clear colour, a single pass returns 90% transparent pixels.
+        /// The opaque sheet I was reacting to had been produced before those
+        /// settings were applied. Half the render cost, and no derived alpha to be
+        /// subtly wrong about.</summary>
         static byte[] Capture(Camera camera, RenderTexture target, Texture2D texture)
         {
             var previous = RenderTexture.active;
