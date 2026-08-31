@@ -25,6 +25,7 @@ import re
 import subprocess
 import sys
 import time
+import os
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -322,7 +323,39 @@ def audit(row, clips, sheets, receipts_for_asset, actions_in_file=None,
     return gaps
 
 
+def single_instance():
+    """Refuse to start if another batch is already running.
+
+    Five orphaned supervisors accumulated in one session, each from a separate
+    `nohup ... &` whose parent shell exited and left it reparented to init. They
+    kept spawning Blender, held the machine while the creator needed it, and their
+    contention produced render failures I attributed to the assets.
+
+    An exclusive lock held for the process's lifetime makes a second batch
+    impossible rather than merely discouraged, and the PID in the file makes the
+    survivor identifiable instead of anonymous.
+    """
+    import fcntl
+    path = Path("/tmp/tessera-batch.lock")
+    handle = path.open("w")
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        existing = ""
+        try:
+            existing = Path("/tmp/tessera-batch.lock").read_text().strip()
+        except OSError:
+            pass
+        raise SystemExit(
+            f"another batch is already running{f' (pid {existing})' if existing else ''} — "
+            "stop it first; this one skips finished work so nothing is lost")
+    handle.write(str(os.getpid()))
+    handle.flush()
+    return handle          # held for the lifetime of the process
+
+
 def main() -> int:
+    _lock = single_instance()
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=5)
     ap.add_argument("--filter", default="")
