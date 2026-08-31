@@ -210,25 +210,18 @@ namespace Astral.Tessera.PlayTests
                     var views = new List<byte[]>();
                     var meta = new List<(int, int, float)>();
 
-                    // Frame the shot ONCE, at rest, and hold it for every view.
-                    // Re-measuring per frame re-centres and re-scales the body
-                    // each time, which subtracts exactly the vertical travel the
-                    // sheet exists to show: every sheet captured before this had
-                    // an identical anchor and content box across all 14 time
-                    // samples — a jump sheet with no jump in it. The wider size
-                    // leaves headroom for the arc so the slime does not clip out
-                    // of frame at the top.
-                    var (restCentre, restRadius) = MeasureBody(simulation);
-                    float shotSize = Mathf.Max(restRadius * 3.2f, 1.0f);
-                    var shotCentre = restCentre + Vector3.up * restRadius * 1.1f;
-
                     for (int frame = 0; frame < Frames; frame++)
                     {
                         for (int i = 0; i < FramesBetweenShots; i++) yield return null;
                         if (frame == Frames / 2 && controller != null) Invoke(controller, "Jump");
-                        var centre = shotCentre;
-                        var radius = restRadius;
-                        camera.orthographicSize = shotSize;
+                        // Tight per-frame framing. Holding one wide framing across
+                        // the sweep would preserve a jump arc, but these element
+                        // profiles are SURFACE looks — one shader family each — not
+                        // physical animations, so there is no arc to preserve and
+                        // the only effect is a smaller subject and a smaller sheet.
+                        // Use Anchor::Frame with a held framing for motion captures.
+                        var (centre, radius) = MeasureBody(simulation);
+                        camera.orthographicSize = Mathf.Max(radius * 1.8f, 0.6f);
                         for (int y = 0; y < Yaws; y++)
                         {
                             float degrees = y * (360f / Yaws);
