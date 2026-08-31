@@ -323,6 +323,54 @@ def audit(row, clips, sheets, receipts_for_asset, actions_in_file=None,
     return gaps
 
 
+def prove_the_inspector_works():
+    """Run the QA inspector against a sheet whose verdict is known IN ADVANCE.
+
+    Every other number in a batch is produced by the pipeline being judged, so a
+    broken inspector and a broken renderer agree with each other and the run reads
+    clean. A control breaks that: this sheet is built to fail — one cell blank, the
+    rest identical — and its verdict is known before the inspector runs. If it
+    comes back passing, the inspector is broken and every "QA PASSED" in the run
+    that follows is worthless, so the batch refuses to start rather than producing
+    reassurance.
+
+    Adapted from a sibling session's framing of the same trap: a control is a
+    number whose value is known before the reader runs.
+    """
+    import struct, subprocess, tempfile
+    size, yaws, frames = 32, 2, 3
+    tmp = Path(tempfile.mkdtemp())
+    tsf = tmp / "control.tsf"
+    with tsf.open("wb") as fh:
+        fh.write(b"TSF1")
+        fh.write(struct.pack("<III", size, size, yaws * frames))
+        for y in range(yaws):
+            for f in range(frames):
+                fh.write(struct.pack("<IIfi", y, f, y * 180.0, f))
+                blank = (y == 0 and f == 2)          # one deliberately empty cell
+                px = []
+                for row in range(size):
+                    for col in range(size):
+                        inside = (not blank) and 8 <= row < 24 and 8 <= col < 24
+                        px += [0.9, 0.2, 0.2, 1.0] if inside else [0.0, 0.0, 0.0, 0.0]
+                fh.write(struct.pack(f"<{len(px)}f", *px))
+
+    result = subprocess.run(
+        [str(CLI), "sheet", str(tsf), str(tmp / "control.png"),
+         "--tileset", str(ROOT / "assets/tilesets/pixel-hd.kernel.json"),
+         "--columns", "16", "--anchor", "feet"],
+        capture_output=True, text=True)
+    output = result.stdout
+    caught_empty = "[FAIL] cells non-empty" in output
+    caught_dupes = "[FAIL] frames distinct" in output
+    if not (caught_empty and caught_dupes):
+        raise SystemExit(
+            "CONTROL FAILED: the inspector did not flag a sheet built to fail "
+            f"(empty cell caught={caught_empty}, duplicates caught={caught_dupes}). "
+            "Every QA result in this run would be meaningless; refusing to start.")
+    print("control ok — the inspector catches a known-bad sheet\n")
+
+
 def single_instance():
     """Refuse to start if another batch is already running.
 
@@ -356,6 +404,7 @@ def single_instance():
 
 def main() -> int:
     _lock = single_instance()
+    prove_the_inspector_works()
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=5)
     ap.add_argument("--filter", default="")
