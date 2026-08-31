@@ -1,0 +1,12 @@
+[package]
+name = "tessera_cli"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "tessera"
+path = "src/main.rs"
+
+[dependencies]
+tessera_core = { path = "../tessera_core" }
+serde_json = "1"

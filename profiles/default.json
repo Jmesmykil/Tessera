@@ -1,0 +1,10 @@
+{
+  "_comment": "Shipped default. Deliberately contains NO personal paths — a released app must not carry its author's filesystem. A user's own settings live in ~/.config/tessera/config.json and override this.",
+  "libraries": [
+    { "name": "library", "root": "~/Documents/Tessera Library", "index_csv": "" }
+  ],
+  "host": { "kind": "local", "blender": "blender", "workdir": "~/Tessera", "env": {} },
+  "out_dir": "~/Documents/Tessera Sheets",
+  "default_profile": "studio",
+  "default_tileset": "pixel-hd"
+}

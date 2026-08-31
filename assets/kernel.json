@@ -1,0 +1,30 @@
+{
+  "schema": "com.astral.ascii.kernel/1",
+  "version": "1.0.0",
+  "name": "ASCII Universal Kernel",
+  "cell_width": 5,
+  "cell_height": 7,
+  "luminance": "rec709",
+  "glyphs": [
+    {"char": " ", "rows": [0, 0, 0, 0, 0, 0, 0]},
+    {"char": ".", "rows": [0, 0, 0, 0, 0, 6, 6]},
+    {"char": ":", "rows": [0, 4, 4, 0, 4, 4, 0]},
+    {"char": "-", "rows": [0, 0, 0, 31, 0, 0, 0]},
+    {"char": "=", "rows": [0, 0, 31, 0, 31, 0, 0]},
+    {"char": "+", "rows": [0, 4, 4, 31, 4, 4, 0]},
+    {"char": "*", "rows": [0, 17, 10, 4, 10, 17, 0]},
+    {"char": "#", "rows": [10, 31, 10, 10, 31, 10, 0]},
+    {"char": "%", "rows": [17, 2, 4, 8, 17, 0, 0]},
+    {"char": "@", "rows": [14, 17, 23, 21, 23, 16, 14]}
+  ],
+  "defaults": {
+    "columns": 96,
+    "cell_aspect": 0.5,
+    "gamma": 1.0,
+    "contrast": 1.0,
+    "structure_strength": 0.7,
+    "edge_threshold": 0.08,
+    "invert": false,
+    "background": [0, 0, 0, 255]
+  }
+}

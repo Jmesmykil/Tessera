@@ -1,0 +1,9 @@
+{
+  "schema": "com.astral.ascii.golden/1",
+  "kernel_fingerprint": "374be5746ebac8936ce85a80443bbb7d2c32b8238fcb281dc2f72123910fe915",
+  "source": "40x20 binary checker with abs(x-2*y)<2 diagonal",
+  "settings": {"columns": 20, "structure_strength": 0.7},
+  "width": 20,
+  "height": 5,
+  "text": "@@-. @@#  @@#  @@#  \n##.=@@#@==##.==##.==\n--%##--%#@--%##--%##\n##...##...##.=-@#...\n  @@@  @@@  @@@%%@@@"
+}

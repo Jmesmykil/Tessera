@@ -1,0 +1,41 @@
+{
+  "$schema": "tessera-release-package/1",
+  "product": "Tessera",
+  "version": "0.1.0",
+  "status": "release-candidate",
+  "built": "2026-08-30",
+  "artifact": {
+    "macos_dmg": {
+      "path": "dist/TesseraStudio.dmg",
+      "bytes": 19596305,
+      "sha256": "ade955e9bf4f5e0f4f4f87b0ff68d7802b1dfb62960a37a8fb812c96806b027c",
+      "signing": "ad-hoc (local); not notarised"
+    },
+    "kernel_dylib": {
+      "path": "rust/target/release/libtessera_core.dylib",
+      "bytes": 712752,
+      "sha256": "a1478b4bc4301a1404de12889996081ced29e668725b7df2853b600208f8fb11"
+    }
+  },
+  "contract": {
+    "schema": "com.astral.ascii.kernel/1",
+    "kernel_fingerprint": "bab4e748e2c70cb79acbeece987229c82fd3d1ef4e85fe131d60b913a808d610",
+    "golden_vector_sha256": "1c5363e3204186f34cc4a7838c8c857c30dc7aa8cd97734b9557725e9574a246",
+    "note": "Payload carried verbatim from the owning product so every host produces identical output."
+  },
+  "verification": {
+    "rust_tests": "cargo test -p tessera_core (golden vector, fingerprint, cross-implementation)",
+    "python_tests": "tests/test_sheet.py (16), tests/test_timing.py (15)",
+    "flutter": "flutter analyze \u2014 clean; flutter test \u2014 4",
+    "equivalence": "Rust and Python sheets are raw-scanline identical from the same frames"
+  },
+  "requirements": {
+    "blender": ">=4.2 on PATH",
+    "macos": ">=12.0"
+  },
+  "excluded": [
+    "source 3D models and their project files",
+    "rendered sheets of third-party models",
+    "Blender itself"
+  ]
+}

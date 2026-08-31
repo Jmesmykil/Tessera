@@ -1,0 +1,169 @@
+{
+  "schema": "com.astral.ascii.kernel/1",
+  "version": "1.0.0",
+  "name": "Tessera Quadrant Block",
+  "cell_width": 4,
+  "cell_height": 4,
+  "luminance": "rec709",
+  "glyphs": [
+    {
+      "char": " ",
+      "rows": [
+        0,
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "char": "▗",
+      "rows": [
+        0,
+        0,
+        3,
+        3
+      ]
+    },
+    {
+      "char": "▖",
+      "rows": [
+        0,
+        0,
+        12,
+        12
+      ]
+    },
+    {
+      "char": "▘",
+      "rows": [
+        12,
+        12,
+        0,
+        0
+      ]
+    },
+    {
+      "char": "▝",
+      "rows": [
+        3,
+        3,
+        0,
+        0
+      ]
+    },
+    {
+      "char": "▄",
+      "rows": [
+        0,
+        0,
+        15,
+        15
+      ]
+    },
+    {
+      "char": "▀",
+      "rows": [
+        15,
+        15,
+        0,
+        0
+      ]
+    },
+    {
+      "char": "▌",
+      "rows": [
+        12,
+        12,
+        12,
+        12
+      ]
+    },
+    {
+      "char": "▐",
+      "rows": [
+        3,
+        3,
+        3,
+        3
+      ]
+    },
+    {
+      "char": "▚",
+      "rows": [
+        12,
+        12,
+        3,
+        3
+      ]
+    },
+    {
+      "char": "▞",
+      "rows": [
+        3,
+        3,
+        12,
+        12
+      ]
+    },
+    {
+      "char": "▙",
+      "rows": [
+        12,
+        12,
+        15,
+        15
+      ]
+    },
+    {
+      "char": "▟",
+      "rows": [
+        3,
+        3,
+        15,
+        15
+      ]
+    },
+    {
+      "char": "▛",
+      "rows": [
+        15,
+        15,
+        12,
+        12
+      ]
+    },
+    {
+      "char": "▜",
+      "rows": [
+        15,
+        15,
+        3,
+        3
+      ]
+    },
+    {
+      "char": "█",
+      "rows": [
+        15,
+        15,
+        15,
+        15
+      ]
+    }
+  ],
+  "defaults": {
+    "columns": 96,
+    "cell_aspect": 1.0,
+    "gamma": 1.0,
+    "contrast": 1.0,
+    "structure_strength": 0.7,
+    "edge_threshold": 0.08,
+    "invert": false,
+    "background": [
+      0,
+      0,
+      0,
+      0
+    ]
+  }
+}

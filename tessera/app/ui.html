@@ -1,0 +1,157 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Tessera Studio</title><style>
+:root{--bg:#14161a;--panel:#1c2026;--line:#2b313a;--ink:#e7ecf3;--dim:#8e99a8;--acc:#6fd3a0;--warn:#e2725b}
+*{box-sizing:border-box}body{margin:0;font:13px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;background:var(--bg);color:var(--ink)}
+header{padding:10px 16px;border-bottom:1px solid var(--line);display:flex;gap:16px;align-items:baseline}
+h1{font-size:14px;margin:0;letter-spacing:.06em;text-transform:uppercase}
+.meta{color:var(--dim);font-size:11px}
+main{display:grid;grid-template-columns:300px 1fr 320px;height:calc(100vh - 42px)}
+section{overflow:auto;padding:12px}
+section+section{border-left:1px solid var(--line)}
+h2{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--dim);margin:14px 0 6px}
+h2:first-child{margin-top:0}
+input,select,button{font:inherit;background:#11141a;color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:5px 7px}
+input[type=range]{padding:0;width:100%}
+button{cursor:pointer}button:hover{border-color:var(--acc)}
+button.primary{background:var(--acc);color:#0c1a13;border-color:var(--acc);font-weight:600}
+button.ghost{background:transparent}
+.row{display:flex;gap:6px;align-items:center;margin:5px 0}
+.row label{flex:0 0 96px;color:var(--dim);font-size:11px}
+.row input[type=number]{width:74px}
+.asset{padding:6px 8px;border:1px solid transparent;border-radius:6px;cursor:pointer;font-size:12px}
+.asset:hover{background:#20252d}.asset.sel{border-color:var(--acc);background:#1b2a23}
+.asset .n{display:block}.asset .s{color:var(--dim);font-size:10.5px}
+.tag{display:inline-block;font-size:9.5px;padding:0 4px;border-radius:3px;background:#2b313a;color:var(--dim);margin-right:3px}
+.tag.on{background:#28503f;color:var(--acc)}
+#sheet{max-width:100%;image-rendering:pixelated;border:1px solid var(--line);border-radius:6px;background:
+linear-gradient(45deg,#1a1d22 25%,transparent 25%),linear-gradient(-45deg,#1a1d22 25%,transparent 25%),
+linear-gradient(45deg,transparent 75%,#1a1d22 75%),linear-gradient(-45deg,transparent 75%,#1a1d22 75%);
+background-size:16px 16px;background-position:0 0,0 8px,8px -8px,-8px 0}
+.qa{font-size:11px;margin:2px 0}.ok{color:var(--acc)}.bad{color:var(--warn)}
+pre{background:#0e1116;border:1px solid var(--line);border-radius:6px;padding:8px;font-size:10.5px;max-height:200px;overflow:auto;white-space:pre-wrap}
+.pill{font-size:10px;color:var(--dim);border:1px solid var(--line);border-radius:99px;padding:1px 8px}
+</style></head><body>
+<header><h1>Tessera Studio</h1><span class="meta" id="hostinfo">…</span><span class="meta" id="cfg"></span></header>
+<main>
+<section>
+  <h2>Library</h2>
+  <div class="row"><input id="q" placeholder="search…" style="flex:1" oninput="debounced()"></div>
+  <div class="row"><label>bucket</label><select id="top" onchange="find()" style="flex:1"></select></div>
+  <div class="row"><label>rigged</label><select id="rig" onchange="find()"><option value="any">any</option><option value="1">yes</option><option value="0">no</option></select>
+  <label style="flex:0 0 60px">animated</label><select id="anim" onchange="find()"><option value="any">any</option><option value="1" selected>yes</option><option value="0">no</option></select></div>
+  <div class="row"><label>max faces</label><input type="number" id="maxf" value="" placeholder="any" oninput="debounced()"></div>
+  <div id="count" class="meta"></div>
+  <div id="list"></div>
+</section>
+
+<section>
+  <h2>Result</h2>
+  <div id="status" class="meta">pick an asset, preview the lighting, then render.</div>
+  <p><img id="sheet" style="display:none"></p>
+  <div id="qa"></div>
+  <pre id="log" style="display:none"></pre>
+</section>
+
+<section>
+  <h2>Subject</h2>
+  <div id="subject" class="meta">nothing selected</div>
+
+  <h2>Framing</h2>
+  <div class="row"><label>centre on</label><select id="center"><option value="root">root bone</option><option value="origin">object origin</option><option value="bbox">bounding box</option></select></div>
+  <div class="row"><label>root motion</label><select id="rootmotion"><option value="strip">strip (in place)</option><option value="keep">keep (travels)</option></select></div>
+  <div class="row"><label>anchor</label><select id="anchor"><option value="feet">feet</option><option value="bottom">bottom</option><option value="center">center</option></select></div>
+  <div class="row"><label>elevation</label><input type="number" id="elevation" value="30" step="0.5"></div>
+
+  <h2>Timing</h2>
+  <div class="row"><label>yaws</label><input type="number" id="yaws" value="8" min="1"><label style="flex:0 0 46px">frames</label><input type="number" id="frames" value="8" min="1"></div>
+  <div class="row"><label>target fps</label><input type="number" id="fps" step="0.1" placeholder="auto"></div>
+  <div class="row"><label>start / end</label><input type="number" id="start" step="0.1" placeholder="auto"><input type="number" id="end" step="0.1" placeholder="auto"></div>
+  <div class="row"><label>phase</label><input type="number" id="phase" value="0" step="0.01" min="0" max="1"><label style="flex:0 0 46px">speed</label><input type="number" id="speed" value="1" step="0.05"></div>
+  <div class="row"><label>loop</label><select id="loop"><option value="1">drop endpoint</option><option value="0">keep endpoint</option></select></div>
+
+  <h2>Lighting</h2>
+  <div class="row"><label>profile</label><select id="profile" style="flex:1"></select></div>
+  <div class="row"><label>ambient</label><input type="number" id="ambient" step="0.05" placeholder="preset"></div>
+  <div class="row"><label>key</label><input type="number" id="key" step="0.1" placeholder="preset">
+  <label style="flex:0 0 30px">rim</label><input type="number" id="rim" step="0.1" placeholder="preset"></div>
+  <div class="row"><label>fill</label><input type="number" id="fill" step="0.1" placeholder="preset">
+  <label style="flex:0 0 46px">exposure</label><input type="number" id="exposure" step="0.05" placeholder="0"></div>
+
+  <h2>Output</h2>
+  <div class="row"><label>tile set</label><select id="tileset" style="flex:1"></select></div>
+  <div class="row"><label>palette</label><select id="palette" style="flex:1"><option value="">from the model</option></select></div>
+  <div class="row"><label>capture px</label><select id="size"><option>256</option><option selected>512</option><option>1024</option><option>2048</option></select>
+  <label style="flex:0 0 46px">quality</label><select id="quality"><option>draft</option><option selected>standard</option><option>high</option></select></div>
+  <div class="row" style="margin-top:12px">
+    <button class="ghost" onclick="run(true)" style="flex:1">Preview lighting</button>
+    <button class="primary" onclick="run(false)" style="flex:1">Render sheet</button>
+  </div>
+</section>
+</main>
+<script>
+let SEL=null, TIMER=null, POLL=null;
+const $=id=>document.getElementById(id);
+const num=id=>{const v=$(id).value; return v===''?null:parseFloat(v)};
+
+async function boot(){
+  const b=await (await fetch('/api/bootstrap')).json();
+  $('hostinfo').textContent=`render host: ${b.host.kind} ${b.host.name}`;
+  $('cfg').textContent=b.source;
+  for(const p of b.profiles) $('profile').add(new Option(p,p,p===b.defaults.profile,p===b.defaults.profile));
+  for(const t of b.tilesets) $('tileset').add(new Option(t,t,t===b.defaults.tileset,t===b.defaults.tileset));
+  for(const p of b.palettes) $('palette').add(new Option(p,p));
+  const tops=await (await fetch('/api/tops')).json();
+  $('top').add(new Option('all',''));
+  for(const t of tops.tops) $('top').add(new Option(t,t));
+  find();
+}
+function debounced(){clearTimeout(TIMER);TIMER=setTimeout(find,220)}
+async function find(){
+  const p=new URLSearchParams({q:$('q').value,rig:$('rig').value,animated:$('anim').value,
+    top:$('top').value,limit:80});
+  if($('maxf').value) p.set('max_faces',$('maxf').value);
+  const r=await (await fetch('/api/search?'+p)).json();
+  $('count').textContent=`${r.count} shown`;
+  $('list').innerHTML='';
+  for(const a of r.assets){
+    const el=document.createElement('div'); el.className='asset';
+    el.innerHTML=`<span class="n">${a.name}</span><span class="s">
+      <span class="tag ${a.rig?'on':''}">rig</span><span class="tag ${a.animated?'on':''}">anim</span>
+      ${a.faces?a.faces.toLocaleString()+' faces':''} ${a.category||''}</span>`;
+    el.onclick=()=>{document.querySelectorAll('.asset').forEach(n=>n.classList.remove('sel'));
+      el.classList.add('sel'); SEL=a;
+      $('subject').textContent=`${a.name} — ${a.category||a.top||''} ${a.faces?'· '+a.faces.toLocaleString()+' faces':''} ${a.license?'· '+a.license:''}`;};
+    $('list').appendChild(el);
+  }
+}
+async function run(preview){
+  if(!SEL){$('status').textContent='pick an asset first.';return}
+  const spec={path:SEL.path,preview:preview,
+    yaws:parseInt($('yaws').value),frames:parseInt($('frames').value),
+    size:parseInt($('size').value),quality:$('quality').value,
+    tileset:$('tileset').value,palette:$('palette').value,anchor:$('anchor').value,
+    center:$('center').value,root_motion:$('rootmotion').value,
+    elevation:num('elevation'),profile:$('profile').value,
+    ambient:num('ambient'),key:num('key'),rim:num('rim'),fill:num('fill'),
+    exposure:num('exposure'),start:num('start'),end:num('end'),
+    target_fps:num('fps'),phase:num('phase'),speed:num('speed'),
+    loop:$('loop').value==='1'};
+  $('status').textContent=preview?'previewing…':'rendering…';
+  $('qa').innerHTML=''; $('log').style.display='none';
+  const j=await (await fetch('/api/render',{method:'POST',body:JSON.stringify(spec)})).json();
+  clearInterval(POLL); POLL=setInterval(()=>poll(j.id),900);
+}
+async function poll(id){
+  const j=await (await fetch('/api/job?id='+id)).json();
+  $('status').textContent=`${id} — ${j.state}${j.seconds?' · '+j.seconds+'s':''}`;
+  if(j.state==='done'||j.state==='failed'){
+    clearInterval(POLL);
+    if(j.log){$('log').style.display='block';$('log').textContent=j.log.slice(-4000)}
+    if(j.png){$('sheet').src=j.png+'?t='+Date.now();$('sheet').style.display='block';
+      $('status').textContent=`${id} — ${j.grid.rows}×${j.grid.columns} cells · ${j.sheet.width_px}×${j.sheet.height_px}px · ${j.seconds}s`;}
+    if(j.qa){$('qa').innerHTML='<h2>Checks</h2>'+j.qa.map(c=>
+      `<div class="qa ${c.ok?'ok':'bad'}">${c.ok?'✓':'✗'} ${c.check} — ${c.detail}</div>`).join('')
+      +`<div class="qa ${j.qa_passed?'ok':'bad'}" style="margin-top:6px"><b>${j.qa_passed?'QA PASSED':'QA FAILED'}</b></div>`;}
+  }
+}
+boot();
+</script></body></html>

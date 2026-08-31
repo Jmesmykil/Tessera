@@ -1,0 +1,22 @@
+# Build output
+app/build/
+app/.dart_tool/
+app/macos/Flutter/ephemeral/
+rust/target/
+dist/
+
+# Rendered output and caches — reproducible, and large
+out/
+*.tsf
+*.tpm
+
+# The reference kernel is imported from its owning product, never vendored
+vendor-kernel/
+
+# Local machine settings live in ~/.config/tessera, never in the repo
+profiles/workstation.json
+profiles/*.local.json
+
+.DS_Store
+__pycache__/
+*.pyc

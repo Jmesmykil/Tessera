@@ -1,0 +1,8 @@
+{
+  "name": "com.astral.tessera",
+  "version": "0.1.0",
+  "displayName": "Tessera",
+  "description": "3D and simulation in, game-ready sprite sheets out. Binds the compiled Tessera kernel.",
+  "unity": "6000.0",
+  "author": { "name": "Astral" }
+}
