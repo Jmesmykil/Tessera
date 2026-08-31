@@ -7,8 +7,8 @@
  "artifact": {
   "macos_dmg": {
    "path": "dist/TesseraStudio.dmg",
-   "bytes": 19599248,
-   "sha256": "ac5e54fe8b17fa233f474eca2e85efa3efc02296351970d15c36848b88c0802a",
+   "bytes": 19600480,
+   "sha256": "b25cf0f962f9acf7e313b64e9d742a25c1889951a2207eaf653bba157338ee47",
    "signing": "ad-hoc (local); not notarised"
   },
   "kernel_dylib": {

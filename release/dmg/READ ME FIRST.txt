@@ -38,4 +38,5 @@ USING IT
 
 KNOWN LIMITS
   One render at a time — concurrent Blender renders fail.
-  The Blender and Unity editions are designed but not built.
+  This is the standalone edition. The Blender and Unity editions are not
+  included in this build.
