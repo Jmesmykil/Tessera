@@ -139,7 +139,7 @@ namespace Astral.Tessera.PlayTests
                         // a world-fixed key silhouettes half the sheet.
                         key.transform.rotation = Quaternion.Euler(35f, degrees - 35f, 0f);
                         fillLamp.transform.rotation = Quaternion.Euler(12f, degrees + 130f, 0f);
-                        views.Add(Capture(camera, target, texture));
+                        views.Add(Capture(camera, target, texture, "jump"));
                         meta.Add((y, f, degrees));
                     }
                 }
@@ -209,19 +209,33 @@ namespace Astral.Tessera.PlayTests
 
                     var views = new List<byte[]>();
                     var meta = new List<(int, int, float)>();
+
+                    // Frame the shot ONCE, at rest, and hold it for every view.
+                    // Re-measuring per frame re-centres and re-scales the body
+                    // each time, which subtracts exactly the vertical travel the
+                    // sheet exists to show: every sheet captured before this had
+                    // an identical anchor and content box across all 14 time
+                    // samples — a jump sheet with no jump in it. The wider size
+                    // leaves headroom for the arc so the slime does not clip out
+                    // of frame at the top.
+                    var (restCentre, restRadius) = MeasureBody(simulation);
+                    float shotSize = Mathf.Max(restRadius * 3.2f, 1.0f);
+                    var shotCentre = restCentre + Vector3.up * restRadius * 1.1f;
+
                     for (int frame = 0; frame < Frames; frame++)
                     {
                         for (int i = 0; i < FramesBetweenShots; i++) yield return null;
                         if (frame == Frames / 2 && controller != null) Invoke(controller, "Jump");
-                        var (centre, radius) = MeasureBody(simulation);
-                        camera.orthographicSize = Mathf.Max(radius * 1.8f, 0.6f);
+                        var centre = shotCentre;
+                        var radius = restRadius;
+                        camera.orthographicSize = shotSize;
                         for (int y = 0; y < Yaws; y++)
                         {
                             float degrees = y * (360f / Yaws);
                             Place(camera, centre, radius, degrees, 18f);
                             key.transform.rotation = Quaternion.Euler(35f, degrees - 35f, 0f);
                             fillLight.transform.rotation = Quaternion.Euler(12f, degrees + 130f, 0f);
-                            views.Add(Capture(camera, target, texture));
+                            views.Add(Capture(camera, target, texture, profile.name));
                             meta.Add((y, frame, degrees));
                         }
                     }
@@ -291,14 +305,13 @@ namespace Astral.Tessera.PlayTests
         static void MakeCutout(Camera camera)
         {
             camera.clearFlags = CameraClearFlags.SolidColor;
-            camera.backgroundColor = new Color(0f, 0f, 0f, 0f);   // the cut-out, in one pass
+            camera.backgroundColor = new Color(0f, 0f, 0f, 0f);
             camera.allowHDR = false;
             camera.allowMSAA = false;
             var data = camera.GetComponent("UniversalAdditionalCameraData");
             if (data != null)
             {
                 var type = data.GetType();
-                // Measured: with this off, a zero-alpha clear yields a real cut-out.
                 type.GetProperty("renderPostProcessing")?.SetValue(data, false);
                 type.GetProperty("antialiasing")?.SetValue(data, 0);
                 type.GetProperty("renderShadows")?.SetValue(data, true);
@@ -352,18 +365,10 @@ namespace Astral.Tessera.PlayTests
             camera.transform.LookAt(centre);
         }
 
-        /// <summary>One render, with the camera configured to produce a cut-out.
-        ///
-        /// This wanted a two-pass black/white composite for a while, on the strength
-        /// of a sheet that came back fully opaque. Measured properly, the camera
-        /// settings were already enough: with URP post-processing off and a
-        /// zero-alpha clear colour, a single pass returns 90% transparent pixels.
-        /// The opaque sheet I was reacting to had been produced before those
-        /// settings were applied. Half the render cost, and no derived alpha to be
-        /// subtly wrong about.</summary>
-        static byte[] Capture(Camera camera, RenderTexture target, Texture2D texture)
+        static Color[] RenderOver(Camera camera, RenderTexture target, Texture2D texture, Color background)
         {
             var previous = RenderTexture.active;
+            camera.backgroundColor = background;
             camera.targetTexture = target;
             camera.Render();
             RenderTexture.active = target;
@@ -371,8 +376,88 @@ namespace Astral.Tessera.PlayTests
             texture.Apply();
             camera.targetTexture = null;
             RenderTexture.active = previous;
+            return texture.GetPixels();
+        }
 
-            var pixels = texture.GetPixels();
+        /// <summary>Render twice and DERIVE the alpha. The camera cannot give it.
+        ///
+        /// The creator put the reason plainly: this camera renders everything for
+        /// the GAME. It is a gameplay camera in a gameplay scene, not a capture rig,
+        /// and a finished game frame is opaque by construction. Turning
+        /// post-processing off and clearing to zero alpha changes what it clears TO,
+        /// not whether the result is a finished frame.
+        ///
+        /// I removed this once on the strength of one in-run probe reporting 90%
+        /// transparent pixels, and the very next packed sheet came back 96% opaque —
+        /// corner pixel (0,0,0,255). The sheet is the artefact; the probe was
+        /// measuring something else. Delivered output outranks an instrument reading
+        /// taken mid-flight.
+        ///
+        /// The maths is exact for any renderer: over black a pixel reads c*a, over
+        /// white c*a + (1-a). Their difference is (1-a) regardless of colour, so
+        /// alpha falls out of the subtraction and un-multiplied colour follows.</summary>
+        static byte[] Capture(Camera camera, RenderTexture target, Texture2D texture, string label)
+        {
+            var overBlack = (Color[])RenderOver(camera, target, texture,
+                new Color(0f, 0f, 0f, 1f)).Clone();
+            var overWhite = RenderOver(camera, target, texture, new Color(1f, 1f, 1f, 1f));
+
+            var pixels = new Color[overBlack.Length];
+            for (int i = 0; i < pixels.Length; i++)
+            {
+                var b = overBlack[i];
+                var w = overWhite[i];
+                float gap = Mathf.Clamp01(Mathf.Min(Mathf.Min(w.r - b.r, w.g - b.g), w.b - b.b));
+                float alpha = Mathf.Clamp01(1f - gap);
+                pixels[i] = alpha <= 0.004f
+                    ? new Color(0f, 0f, 0f, 0f)
+                    : new Color(b.r / alpha, b.g / alpha, b.b / alpha, alpha);
+            }
+
+            // Background differencing cannot matte an ADDITIVE subject. A material
+            // that writes emission but no coverage — his EXP Glitch family sets
+            // transmittance 1.0 and never assigns response.coverage — reads the
+            // background back almost unchanged, so `gap` is ~1 and every derived
+            // alpha collapses to zero. That is what turned a full 56-view capture
+            // into a 56x16 sheet with not one inked pixel.
+            //
+            // Over BLACK such a subject reads exactly its own emission with no
+            // background contaminating it, which is already a valid matte: take
+            // luminance as coverage and un-premultiply the colour by it.
+            //
+            // This fires ONLY when differencing found essentially nothing, so the
+            // six elements that matte correctly are untouched, and it says so out
+            // loud — a fallback that engages in silence is the failure it is
+            // meant to catch.
+            int mattedByDifference = 0;
+            for (int i = 0; i < pixels.Length; i++)
+                if (pixels[i].a > 0.004f) mattedByDifference++;
+
+            if (mattedByDifference * 200 < pixels.Length)   // under 0.5% of the frame
+            {
+                int mattedByLuminance = 0;
+                for (int i = 0; i < pixels.Length; i++)
+                {
+                    var b = overBlack[i];
+                    float luma = 0.2126f * b.r + 0.7152f * b.g + 0.0722f * b.b;
+                    if (luma <= 0.004f) { pixels[i] = new Color(0f, 0f, 0f, 0f); continue; }
+                    // Alpha is coverage and belongs in [0,1]; COLOUR is energy and
+                    // does not. Clamping it here is what turns a glow into a flat
+                    // matte, so the over-range travels in the float .tsf and the
+                    // packer normalises it into the sheet with a recorded scale.
+                    float alpha = Mathf.Clamp01(luma);
+                    pixels[i] = new Color(b.r / alpha, b.g / alpha, b.b / alpha, alpha);
+                    mattedByLuminance++;
+                }
+
+                if (mattedByLuminance * 200 >= pixels.Length)
+                    Debug.Log($"[tessera] {label}: additive matte — differencing found "
+                              + $"{mattedByDifference} px, luminance recovered {mattedByLuminance}");
+                else
+                    Debug.LogWarning($"[tessera] {label}: NOTHING to matte — differencing "
+                                     + $"{mattedByDifference} px, luminance {mattedByLuminance}. "
+                                     + "This frame is genuinely empty.");
+            }
             var bytes = new byte[Size * Size * 16];
             int at = 0;
             for (int y = Size - 1; y >= 0; y--)      // Unity is bottom-up; TSF is top-down

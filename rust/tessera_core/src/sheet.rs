@@ -17,6 +17,17 @@ pub enum Anchor {
     Center,
     Bottom,
     Feet,
+    /// Anchor every frame at the SAME point in the source frame, ignoring where
+    /// the subject sits inside it.
+    ///
+    /// The other three modes align each frame by its own content box, which is
+    /// right for a walk cycle — you want the contact point steady. It is wrong
+    /// for a jump: re-anchoring per frame subtracts the vertical travel, so the
+    /// sheet shows a slime that never leaves the ground. Every element sheet
+    /// captured before this existed had `anchor_px` identical across all 14
+    /// time samples, which is exactly that defect, and only the two elements
+    /// with the flattest surfaces tripped the duplicate-frame check.
+    Frame,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -97,6 +108,9 @@ fn content_bbox(kernel: &Kernel, frame: &Frame) -> Option<BBox> {
 fn anchor_of(kernel: &Kernel, frame: &Frame, bbox: &BBox, mode: Anchor) -> (f64, f64) {
     let cx = bbox.x as f64 + bbox.w as f64 / 2.0;
     match mode {
+        // The centre of the captured frame, the same for every view, so whatever
+        // the subject does inside that frame survives into the sheet.
+        Anchor::Frame => (frame.width as f64 / 2.0, frame.height as f64 / 2.0),
         Anchor::Center => (cx, bbox.y as f64 + bbox.h as f64 / 2.0),
         Anchor::Bottom => (cx, (bbox.y + bbox.h) as f64),
         // `feet` is the centroid of the ink actually occupying the lowest row, not
@@ -140,6 +154,12 @@ fn alpha_channel(view: &View) -> Vec<f32> {
 /// comes out dotted. Two passes fix it without touching the kernel — a shape pass
 /// over the silhouette painted white, and a colour pass masked by alpha so
 /// transparent neighbours cannot drag an edge cell toward black.
+/// Convert one view to a glyph frame. Public so a test can compare the
+/// high-depth and byte-quantised renderers on the same real frame.
+pub fn convert_view(kernel: &Kernel, s: &Settings, view: &View, fill: Fill) -> Result<Frame, String> {
+    convert(kernel, s, view, fill)
+}
+
 fn convert(kernel: &Kernel, s: &Settings, view: &View, fill: Fill) -> Result<Frame, String> {
     let mask = alpha_channel(view);
     let colour = kernel.convert_rgba(&view.pixels, view.width, view.height, s, Some(&mask))?;
@@ -155,6 +175,10 @@ fn convert(kernel: &Kernel, s: &Settings, view: &View, fill: Fill) -> Result<Fra
             glyph: sh.glyph,
             foreground: co.foreground,
             background: co.background,
+            // Solid fill runs the kernel twice — silhouette for coverage,
+            // alpha-masked colour for colour — so the float colour must come
+            // from the same pass as the byte colour: the colour pass.
+            foreground_linear: co.foreground_linear,
             luminance: sh.luminance,
         })
         .collect();
@@ -216,7 +240,8 @@ pub fn build(
 
     let sheet_w = columns * cell_w;
     let sheet_h = rows * cell_h;
-    let empty_cell = Cell { glyph: 0, foreground: [0; 4], background: [0; 4], luminance: 0.0 };
+    let empty_cell = Cell { glyph: 0, foreground: [0; 4], background: [0; 4],
+                            foreground_linear: [0.0; 4], luminance: 0.0 };
     let mut cells = vec![empty_cell; (sheet_w * sheet_h) as usize];
     let mut metas = Vec::with_capacity(converted.len());
 
@@ -265,7 +290,7 @@ pub fn build(
     metas.sort_by_key(|m| (m.row, m.column));
 
     let composite = Frame { width: sheet_w, height: sheet_h, cells };
-    let (width, height, pixels) = kernel.render_rgba(&composite, options.scale);
+    let (width, height, pixels) = kernel.render_rgba_hd(&composite, options.scale);
     let px = kernel.cell_width * options.scale;
     let py = kernel.cell_height * options.scale;
     let meta = SheetMeta {

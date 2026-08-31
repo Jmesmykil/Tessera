@@ -124,6 +124,16 @@ pub struct Cell {
     pub glyph: u16,
     pub foreground: [u8; 4],
     pub background: [u8; 4],
+    /// The same foreground BEFORE it was quantised to bytes.
+    ///
+    /// `foreground` is the ASCII kernel's contract and is byte-exact against the
+    /// Python golden vectors, so it does not move. But a sprite is not a
+    /// terminal: rounding a linear average to 8 bits and dividing by 255 again
+    /// on the way out costs precision in exactly the soft translucent falloff
+    /// these sheets are made of, and clamps away emissive energy above 1.0.
+    /// This field carries the unrounded value for `render_rgba_hd`; nothing that
+    /// feeds glyph selection or the divergence gate reads it.
+    pub foreground_linear: [f32; 4],
     pub luminance: f64,
 }
 
@@ -371,10 +381,67 @@ impl Kernel {
                     [0, 0, 0, 0]
                 };
 
-                cells.push(Cell { glyph: glyph as u16, foreground, background: s.background, luminance: lum });
+                // The same choice again, in float, off the unrounded average.
+                // Alpha is coverage and is clamped; RGB is energy and is not.
+                let foreground_linear = if weight > 0.0 {
+                    let a = ((sa / weight) as f32).clamp(0.0, 1.0);
+                    match s.color_mode {
+                        ColorMode::Tint => [s.tint[0] as f32 / 255.0, s.tint[1] as f32 / 255.0,
+                                            s.tint[2] as f32 / 255.0, a * s.tint[3] as f32 / 255.0],
+                        ColorMode::Mono => [1.0, 1.0, 1.0, a],
+                        ColorMode::Palette => {
+                            let scaled = lum.clamp(0.0, 1.0) * (s.palette.len() - 1) as f64;
+                            let c = s.palette[round_half_even(scaled) as usize];
+                            [c[0] as f32 / 255.0, c[1] as f32 / 255.0,
+                             c[2] as f32 / 255.0, a * c[3] as f32 / 255.0]
+                        }
+                        ColorMode::Source => [(sr / weight) as f32, (sg / weight) as f32,
+                                              (sb / weight) as f32, a],
+                    }
+                } else {
+                    [0.0, 0.0, 0.0, 0.0]
+                };
+
+                cells.push(Cell { glyph: glyph as u16, foreground, background: s.background,
+                                  foreground_linear, luminance: lum });
             }
         }
         Ok(Frame { width: columns, height: rows, cells })
+    }
+
+    /// Render using the unrounded cell colour, so nothing is quantised twice
+    /// and emissive energy above 1.0 survives to the packer. Glyph geometry is
+    /// identical to `render_rgba`; only the colour fetch differs.
+    pub fn render_rgba_hd(&self, frame: &Frame, scale: u32) -> (u32, u32, Vec<f32>) {
+        let width = frame.width * self.cell_width * scale;
+        let height = frame.height * self.cell_height * scale;
+        let mut out = vec![0.0f32; (width * height * 4) as usize];
+        let bg = |c: [u8; 4]| [c[0] as f32 / 255.0, c[1] as f32 / 255.0,
+                               c[2] as f32 / 255.0, c[3] as f32 / 255.0];
+        for gy in 0..frame.height {
+            for gx in 0..frame.width {
+                let cell = frame.cells[(gy * frame.width + gx) as usize];
+                let bits = &self.rows[cell.glyph as usize];
+                let background = bg(cell.background);
+                for py in 0..self.cell_height * scale {
+                    let by = (py / scale) as usize;
+                    for px in 0..self.cell_width * scale {
+                        let bx = px / scale;
+                        let ink = bits.get(by).copied().unwrap_or(0)
+                            & (1 << (self.cell_width - 1 - bx)) != 0;
+                        let colour = if ink { cell.foreground_linear } else { background };
+                        let x = gx * self.cell_width * scale + px;
+                        let y = gy * self.cell_height * scale + py;
+                        let o = ((y * width + x) * 4) as usize;
+                        out[o] = colour[0];
+                        out[o + 1] = colour[1];
+                        out[o + 2] = colour[2];
+                        out[o + 3] = colour[3];
+                    }
+                }
+            }
+        }
+        (width, height, out)
     }
 
     /// Render a glyph frame back to RGBA in 0..1 at an integer scale.

@@ -6,8 +6,8 @@ use tessera_core::{kernel::Kernel, png, qa, sheet, sheet::{Anchor, BuildOptions,
 fn usage() -> ! {
     eprintln!(
         "tessera {}\n\n\
-         sheet <frames.tsf> <out.png> [--tileset PATH] [--columns N] [--anchor feet|bottom|center]\n\
-         \t[--fill solid|tone] [--scale N] [--padding N]\n\
+         sheet <frames.tsf> <out.png> [--tileset PATH] [--columns N] [--anchor feet|bottom|center|frame]\n\
+         \t[--fill solid|tone] [--scale N] [--padding N] [--depth 8|16]\n\
          fingerprint <kernel.json>\n\
          version",
         env!("CARGO_PKG_VERSION")
@@ -42,13 +42,22 @@ fn main() {
             let views = match tessera_core::frames::read_views(frames) {
                 Ok(v) => v, Err(e) => { eprintln!("error: {e}"); std::process::exit(1) }
             };
+            // 16-bit by default: these sheets are mostly soft translucent
+            // falloff, which is where 8 bits bands. --depth 8 stays available
+            // for engines that will not take a 16-bit texture.
+            let depth: u8 = match flag(&args, "--depth").as_deref() {
+                Some("8") => 8,
+                Some("16") | None => 16,
+                Some(other) => { eprintln!("error: --depth must be 8 or 16, got {other}"); std::process::exit(2) }
+            };
             let mut settings = Settings::sprite(&kernel);
             if let Some(c) = flag(&args, "--columns").and_then(|v| v.parse().ok()) {
                 settings.columns = c;
             }
             let options = BuildOptions {
                 anchor: match flag(&args, "--anchor").as_deref() {
-                    Some("center") => Anchor::Center, Some("bottom") => Anchor::Bottom, _ => Anchor::Feet },
+                    Some("center") => Anchor::Center, Some("bottom") => Anchor::Bottom,
+                    Some("frame") => Anchor::Frame, _ => Anchor::Feet },
                 fill: match flag(&args, "--fill").as_deref() {
                     Some("tone") => Fill::Tone, _ => Fill::Solid },
                 padding: flag(&args, "--padding").and_then(|v| v.parse().ok()).unwrap_or(1),
@@ -66,6 +75,13 @@ fn main() {
             // A sheet without its cell geometry is half a deliverable: an engine
             // cannot slice it, and the anchors that took the most care to get right
             // are invisible. The sidecar goes beside the PNG, always.
+            // Preserve the glow. The capture is HDR; an 8-bit write clips every
+            // sample above 1.0 to white and the emissive elements arrive flat.
+            let mut pixels = pixels;
+            let energy_scale = png::normalise_energy(&mut pixels);
+            if energy_scale > 1.0 {
+                println!("  energy   peak {energy_scale:.3} preserved (multiply RGB by this to restore)");
+            }
             let sidecar = out.with_extension("json");
             let meta_json = serde_json::json!({
                 "schema": "com.astral.tessera.sheet/1",
@@ -86,12 +102,20 @@ fn main() {
                 "qa": findings.iter().map(|f| serde_json::json!(
                     {"check": f.check, "ok": f.ok, "detail": f.detail})).collect::<Vec<_>>(),
                 "qa_passed": ok,
+                // How the sheet was written, and how to get the original range
+                // back: colour_linear = texel.rgb * energy_scale.
+                "encoding": {"bit_depth": depth, "energy_scale": energy_scale},
             });
             if let Err(e) = std::fs::write(&sidecar, serde_json::to_string_pretty(&meta_json).unwrap()) {
                 eprintln!("warning: could not write {}: {e}", sidecar.display());
             }
-            match png::encode_rgba(w, h, &pixels).and_then(|b| std::fs::write(&out, b).map_err(|e| e.to_string())) {
-                Ok(()) => println!("{} — {}x{} px, {}x{} cells (+ {})",
+            let encoded = if depth == 16 {
+                png::encode_rgba16(w, h, &pixels)
+            } else {
+                png::encode_rgba(w, h, &pixels)
+            };
+            match encoded.and_then(|b| std::fs::write(&out, b).map_err(|e| e.to_string())) {
+                Ok(()) => println!("{} — {}x{} px, {}x{} cells, {depth}-bit (+ {})",
                                    out.display(), w, h, meta.rows, meta.columns,
                                    sidecar.file_name().unwrap().to_string_lossy()),
                 Err(e) => { eprintln!("error: {e}"); std::process::exit(1) }
