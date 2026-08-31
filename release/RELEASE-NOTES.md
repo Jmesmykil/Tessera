@@ -20,6 +20,43 @@ image-generation model that was not available. Tessera needs none. It renders th
 model you already own and quantises the result, so the output is deterministic,
 reproducible, and yours.
 
+## Output depth
+
+Sheets are written as **16-bit RGBA PNG**. The capture is HDR float end to end
+and three separate stages were flattening it: the writer emitted 8 bits and
+clipped everything above 1.0 to white, the kernel quantised each cell's colour
+to bytes so a 16-bit file was still an 8-bit picture, and the Unity capture
+clamped derived colour into [0,1]. Alpha is coverage and belongs in that range;
+colour is energy and does not.
+
+The kernel's byte-exact colour is the ASCII contract and is gated by golden
+vectors, so it did not move — a parallel unrounded field carries the float value
+and a second renderer reads it. Measured on real element sheets, distinct
+colours went from 32 to 75,894 on the flattest subject, and from 442 to 71,386
+on another. Thirty-two colours was visible banding.
+
+Where a subject's colour exceeds 1.0, the sheet is normalised so the peak lands
+at 1.0 and the divisor is recorded in the sidecar as `encoding.energy_scale`.
+Multiply the texel by it to recover the original range, so emissive subjects
+keep their glow instead of arriving as a flat matte.
+
+`--depth 8` remains available for engines that will not take a 16-bit texture,
+and `--scale N` multiplies the canvas for high-resolution tiers — the element
+sheets ship at both a 1:1 tier and a 4K tier of 3864-4536 px wide.
+
+## Matting subjects that have no alpha
+
+A material that writes emission but no coverage cannot be matted by rendering it
+against two backgrounds: it reads the background back almost unchanged, so the
+derived alpha collapses to zero everywhere. One real element did exactly this
+and packed a full 56-view capture into a sheet with not a single inked pixel.
+
+Rendered over black, such a subject reads exactly its own emission with nothing
+of the background in it, which is already a valid matte — luminance becomes
+coverage. It engages only when background differencing recovered under 0.5% of
+the frame, and it logs when it does. A fallback that engages silently is the
+failure it was written to catch.
+
 ## The parts that took the most getting right
 
 **Colour comes from the model.** `color_mode=SOURCE` takes the alpha-masked

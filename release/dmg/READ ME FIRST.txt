@@ -1,0 +1,41 @@
+Tessera Studio 0.1.0
+====================
+
+3D models in, game-ready sprite sheets out.
+
+INSTALL
+  Drag "Tessera Studio.app" onto the Applications folder beside it.
+
+FIRST LAUNCH
+  macOS will refuse to open it the first time. This build is signed locally
+  rather than notarised by Apple, which is expected for a test build.
+  Right-click the app -> Open -> Open. Once only.
+
+WHAT YOU NEED
+  Blender 4.2 or newer, on your PATH as "blender". Tessera drives Blender to
+  render; everything else — the live 3D viewport, quantising, packing and the
+  quality checks — runs inside the app itself.
+
+SETUP
+  Open the app, click the settings icon (top right), and set:
+
+    Library folder — any folder of .blend files. Categories and subcategories
+                     come from that folder's own structure. Nothing to configure.
+    Output folder  — where sheets are written. They mirror the library's layout,
+                     so you can point this anywhere or symlink it.
+
+  Settings live at  ~/.config/tessera/config.json
+
+USING IT
+  Pick a category, then an asset. It loads and spins straight away — drag to
+  rotate, scroll to zoom, and use the toolbar for shading modes and the ground
+  grid. Pick an animation, drag the light where you want it, then Render.
+
+  Every sheet is checked before you get it, and each is written with a .json
+  sidecar giving cell size, per-frame boxes and anchors so an engine can slice it.
+
+  Save a "tune" to reuse one look across a whole game.
+
+KNOWN LIMITS
+  One render at a time — concurrent Blender renders fail.
+  The Blender and Unity editions are designed but not built.

@@ -1,43 +1,43 @@
 {
-  "$schema": "tessera-release-package/1",
-  "product": "Tessera",
-  "version": "0.1.0",
-  "status": "release-candidate",
-  "built": "2026-08-30",
-  "artifact": {
-    "macos_dmg": {
-      "path": "dist/TesseraStudio.dmg",
-      "bytes": 19598915,
-      "sha256": "6cc7ad657115d4824ab4745473bf91f272662b674869d3393d0de6d44f392dbd",
-      "signing": "ad-hoc (local); not notarised"
-    },
-    "kernel_dylib": {
-      "path": "rust/target/release/libtessera_core.dylib",
-      "bytes": 712752,
-      "sha256": "a1478b4bc4301a1404de12889996081ced29e668725b7df2853b600208f8fb11"
-    }
+ "$schema": "tessera-release-package/1",
+ "product": "Tessera",
+ "version": "1.0.0",
+ "status": "release-candidate",
+ "built": "2026-08-30",
+ "artifact": {
+  "macos_dmg": {
+   "path": "dist/TesseraStudio.dmg",
+   "bytes": 19599248,
+   "sha256": "ac5e54fe8b17fa233f474eca2e85efa3efc02296351970d15c36848b88c0802a",
+   "signing": "ad-hoc (local); not notarised"
   },
-  "contract": {
-    "schema": "com.astral.ascii.kernel/1",
-    "kernel_fingerprint": "bab4e748e2c70cb79acbeece987229c82fd3d1ef4e85fe131d60b913a808d610",
-    "golden_vector_sha256": "1c5363e3204186f34cc4a7838c8c857c30dc7aa8cd97734b9557725e9574a246",
-    "note": "Payload carried verbatim from the owning product so every host produces identical output."
-  },
-  "verification": {
-    "rust_tests": "cargo test -p tessera_core (golden vector, fingerprint, cross-implementation)",
-    "python_tests": "tests/test_sheet.py (16), tests/test_timing.py (15)",
-    "flutter": "flutter analyze \u2014 clean; flutter test \u2014 4",
-    "equivalence": "Rust and Python sheets are raw-scanline identical from the same frames",
-    "dmg_mounted_and_launched": true,
-    "sheet_sidecar": "every sheet is written with a com.astral.tessera.sheet/1 JSON beside it"
-  },
-  "requirements": {
-    "blender": ">=4.2 on PATH",
-    "macos": ">=12.0"
-  },
-  "excluded": [
-    "source 3D models and their project files",
-    "rendered sheets of third-party models",
-    "Blender itself"
-  ]
+  "kernel_dylib": {
+   "path": "rust/target/release/libtessera_core.dylib",
+   "bytes": 713072,
+   "sha256": "f30432edc5fcf44b22f9110bfd8befea383bd5476597169009007fc48c944902"
+  }
+ },
+ "contract": {
+  "schema": "com.astral.ascii.kernel/1",
+  "kernel_fingerprint": "bab4e748e2c70cb79acbeece987229c82fd3d1ef4e85fe131d60b913a808d610",
+  "golden_vector_sha256": "1c5363e3204186f34cc4a7838c8c857c30dc7aa8cd97734b9557725e9574a246",
+  "note": "Payload carried verbatim from the owning product so every host produces identical output."
+ },
+ "verification": {
+  "rust_tests": "cargo test -p tessera_core (golden vector, fingerprint, cross-implementation)",
+  "python_tests": "tests/test_sheet.py (16), tests/test_timing.py (15)",
+  "flutter": "flutter analyze \u2014 clean; flutter test \u2014 4",
+  "equivalence": "Rust and Python sheets are raw-scanline identical from the same frames",
+  "dmg_mounted_and_launched": true,
+  "sheet_sidecar": "every sheet is written with a com.astral.tessera.sheet/1 JSON beside it"
+ },
+ "requirements": {
+  "blender": ">=4.2 on PATH",
+  "macos": ">=12.0"
+ },
+ "excluded": [
+  "source 3D models and their project files",
+  "rendered sheets of third-party models",
+  "Blender itself"
+ ]
 }
