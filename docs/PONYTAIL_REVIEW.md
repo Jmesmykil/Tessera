@@ -48,6 +48,18 @@ the batch tools, and the client.
   sheet, the audit judges whether the right sheets exist at all. Merging them
   would let a reader bug validate itself.
 
+## What the environment taught the design
+
+A batch is not only a producer of output, it is a claimant on a shared machine.
+Two properties turned out to be load-bearing and neither was obvious from the code:
+
+- **Singleton by construction.** Five orphaned supervisors accumulated in one
+  session, each from a `nohup` whose parent shell exited. A lock held for the
+  process lifetime, with the pid written into it, removes the whole class.
+- **A blank failure is a scheduling fact, not an asset fact.** Concurrent Blenders
+  return nothing rather than erroring, so an empty error means the environment
+  contaminated the measurement. Believing it blames the subject for the harness.
+
 ## Known unevenness, stated rather than hidden
 
 - `capture.py` has grown large and now carries clip discovery, framing, lighting,
